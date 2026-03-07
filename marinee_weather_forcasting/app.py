@@ -142,12 +142,29 @@ model = get_model()
 if st.button("🔮 Predict marine condition", key="predict_button"):
     # 1. Fetch data
     df = None
+    using_live_data = False
+
     if use_live and api_key:
         df = fetch_live_data(lat, lng, api_key, hours)
+        if df is not None and not df.empty:
+            using_live_data = True
 
     if df is None or df.empty:
-        st.info("ℹ️ Using sample data for prediction.")
         df = get_sample_data()
+        using_live_data = False
+
+    # --- Always show data source banner so user knows what drove the prediction ---
+    if using_live_data:
+        st.success(
+            f"✅ **Using live StormGlass data** for lat={lat:.4f}, lng={lng:.4f} — "
+            f"prediction reflects **real current conditions**."
+        )
+    else:
+        st.warning(
+            f"⚠️ **Using hardcoded sample data** (Wave 1.2 m, Wind 6.5 m/s) — "
+            f"**NOT real data for lat={lat:.4f}, lng={lng:.4f}.** "
+            f"To get real predictions: provide a StormGlass API key and enable ‘Fetch live data’."
+        )
 
     # 2. Feature engineering
     df = engineer_features(df)
