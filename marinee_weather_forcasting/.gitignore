@@ -1,8 +1,27 @@
+# Virtual environments
 .venv/
+venv/
+env/
+
+# Python cache
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+
+# ML model binaries (large files - optionally track with Git LFS)
 *.pkl
+
+# Environment variables / secrets
 .env
-git add .gitignore
-git commit -m "Add gitignore"
-git push
+.env.*
+
+# Streamlit cache
+.streamlit/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
