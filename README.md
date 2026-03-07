@@ -17,7 +17,6 @@
 
 **Predicted output labels:** `Calm` · `Moderate` · `Rough`
 
----
 
 ## ✨ Features
 
@@ -49,11 +48,9 @@
 | `folium` + `streamlit-folium` | Interactive click-to-select map |
 | `python-dotenv` | Load `.env` API keys |
 
----
 
 ## 🧠 How It Works
 
-```
 User picks a location (map / city / preset)
            │
            ▼
@@ -75,22 +72,6 @@ User picks a location (map / city / preset)
            ▼
    Output: Calm / Moderate / Rough + confidence %
          + Risk Score + Safety Guidance + Charts
-```
-
----
-
-## 🌍 Supported Preset Locations
-
-| Location | Lat | Lon |
-|---|---|---|
-| San Francisco, USA | 37.77 | -122.42 |
-| Sydney, Australia | -33.87 | 151.21 |
-| Cape Town, South Africa | -33.92 | 18.42 |
-| Mumbai, India | 19.08 | 72.88 |
-| Honolulu, Hawaii | 21.31 | -157.86 |
-| Visakhapatnam, India | 17.69 | 83.22 |
-| Chennai, India | 13.08 | 80.27 |
-| Kochi, India | 9.93 | 76.27 |
 
 
 ## 🤝 Contributing
