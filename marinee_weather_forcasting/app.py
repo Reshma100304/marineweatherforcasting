@@ -2,11 +2,16 @@
 app.py — Marine Weather Predictor
 Entry point for the Streamlit dashboard.
 """
+import os
 import streamlit as st
 import pandas as pd
 import pydeck as pdk
 import numpy as np
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load .env file if it exists (silently ignored if missing)
+load_dotenv()
 
 from utils.model_loader import get_model
 from utils.data_fetcher import fetch_live_data, get_sample_data, engineer_features, FEATURE_COLS
@@ -59,10 +64,13 @@ with st.sidebar:
 
     st.markdown("---")
 
+    # Pre-fill from STORMGLASS_API_KEY in .env (empty string if not set)
+    _env_key = os.getenv("STORMGLASS_API_KEY", "")
     api_key = st.text_input(
         "StormGlass API Key (optional)",
+        value=_env_key,
         type="password",
-        help="Leave empty to use sample data.",
+        help="Set STORMGLASS_API_KEY in a .env file to avoid typing it each session.",
     )
 
     with st.expander("Advanced options"):

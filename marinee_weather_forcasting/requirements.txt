@@ -6,3 +6,4 @@ streamlit
 joblib
 altair
 pydeck
+python-dotenv
