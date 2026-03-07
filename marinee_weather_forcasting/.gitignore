@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+*.pkl
+.env
+git add .gitignore
+git commit -m "Add gitignore"
+git push
