@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from utils.model_loader import get_model
-from utils.data_fetcher import fetch_live_data, get_sample_data, engineer_features, FEATURE_COLS
+from utils.data_fetcher import fetch_live_data, get_sample_data, engineer_features, FEATURE_COLS, geocode_city
 from utils.charts import render_trend_chart, render_feature_importance
 
 # ---------------------------------------------------------------------------
@@ -57,10 +57,59 @@ PRESETS = {
 with st.sidebar:
     st.header("⚙️ Controls")
 
-    preset_name = st.selectbox("Location preset", list(PRESETS.keys()))
-    default_lat, default_lng = PRESETS[preset_name]
-    lat = st.number_input("Latitude", value=default_lat, format="%f")
-    lng = st.number_input("Longitude", value=default_lng, format="%f")
+    # --- City Search ---
+    st.markdown("###### 🔍 Search by city name")
+    city_col, btn_col = st.columns([3, 1])
+    with city_col:
+        city_input = st.text_input(
+            "City",
+            placeholder="e.g. Visakhapatnam",
+            label_visibility="collapsed",
+        )
+    with btn_col:
+        search_clicked = st.button("Go", use_container_width=True)
+
+    # Geocode when user clicks Search
+    if search_clicked and city_input.strip():
+        with st.spinner(f"Looking up '{city_input}'..."):
+            geo = geocode_city(city_input.strip())
+        if geo:
+            st.session_state["geo_lat"] = geo[0]
+            st.session_state["geo_lng"] = geo[1]
+            st.session_state["geo_label"] = geo[2]
+            st.success(f"📍 Found: {geo[2][:60]}")
+        else:
+            st.error(f"❌ Could not find '{city_input}'. Try a more specific name.")
+
+    st.markdown("---")
+
+    # --- Preset selector (fallback / convenience) ---
+    st.markdown("###### 📌 Or choose a preset")
+    PRESETS = {
+        "San Francisco, USA": (37.7749, -122.4194),
+        "Sydney, AU": (-33.8688, 151.2093),
+        "Cape Town, ZA": (-33.9249, 18.4241),
+        "Mumbai, IN": (19.0760, 72.8777),
+        "Honolulu, US-HI": (21.3069, -157.8583),
+        "Visakhapatnam, IN": (17.6868, 83.2185),
+    }
+    preset_name = st.selectbox("Location preset", ["(use city search above)"] + list(PRESETS.keys()))
+
+    # Resolve final lat/lng — city search wins over preset
+    if "geo_lat" in st.session_state and (search_clicked or preset_name == "(use city search above)"):
+        lat = st.session_state["geo_lat"]
+        lng = st.session_state["geo_lng"]
+    elif preset_name != "(use city search above)":
+        lat, lng = PRESETS[preset_name]
+        # Clear geocode state when user switches to a preset
+        st.session_state.pop("geo_lat", None)
+        st.session_state.pop("geo_lng", None)
+    else:
+        lat = st.session_state.get("geo_lat", 37.7749)
+        lng = st.session_state.get("geo_lng", -122.4194)
+
+    lat = st.number_input("Latitude", value=float(lat), format="%f")
+    lng = st.number_input("Longitude", value=float(lng), format="%f")
 
     st.markdown("---")
 

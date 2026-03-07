@@ -1,12 +1,34 @@
 """
 utils/data_fetcher.py
-Handles fetching live data from the StormGlass API and generating sample data.
+Handles geocoding, fetching live data from the StormGlass API, and generating sample data.
 """
 import pandas as pd
 import numpy as np
 from datetime import datetime
 import requests
 import streamlit as st
+
+
+def geocode_city(city_name: str) -> tuple[float, float, str] | None:
+    """
+    Convert a city name to (latitude, longitude, display_name) using the
+    free OpenStreetMap Nominatim API. Returns None if the city is not found.
+    No API key required.
+    """
+    try:
+        resp = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={"q": city_name, "format": "json", "limit": 1},
+            headers={"User-Agent": "MarineWeatherPredictor/1.0"},
+            timeout=5,
+        )
+        results = resp.json()
+        if not results:
+            return None
+        r = results[0]
+        return float(r["lat"]), float(r["lon"]), r.get("display_name", city_name)
+    except Exception:
+        return None
 
 
 def fetch_live_data(lat: float, lng: float, api_key: str, hours: int) -> pd.DataFrame | None:
