@@ -1,99 +1,62 @@
-# 🌊 Marine Weather Forecasting
+﻿#  Marine Weather Predictor Dashboard
 
-> An AI-powered Streamlit dashboard that predicts real-time marine sea-state conditions — **Calm**, **Moderate**, or **Rough** — using ocean parameters and machine learning.
+An AI-powered Marine Weather Prediction System that predicts real-time marine conditions — Calm, Moderate, or Rough — based on ocean parameters (wave height, wind speed, swell height/period).
 
-## 📖 Overview
-
-**Marine Weather Forecaster** is an interactive prediction dashboard built for sailors, mariners, and marine researchers. It fetches live oceanic data from the [StormGlass API](https://stormglass.io/) or the free [Open-Meteo Marine API](https://open-meteo.com/) and runs it through a pre-trained scikit-learn classifier to label current sea conditions.
-
-**Key input features used by the model:**
-
-| Feature | Description |
-|---|---|
-| Wave Height (m) | Significant wave height at the selected location |
-| Wind Speed (m/s) | Surface wind speed |
-| Swell Height (m) | Swell wave height |
-| Swell Period (s) | Swell wave period |
-
-**Predicted output labels:** `Calm` · `Moderate` · `Rough`
+Built with: Python, Streamlit, scikit-learn, joblib and the StormGlass API.
 
 ---
 
-## ✨ Features
+##  Live Demo
 
-- 🔮 **ML Prediction** — Random Forest classifier (`marine_model.pkl`) with confidence scores
-- 🌐 **Live Data** — Pulls real marine forecast via [Open-Meteo](https://open-meteo.com/) (free, no key needed) or [StormGlass](https://stormglass.io/) (API key required)
-- 🗺️ **Interactive Map** — Click anywhere on a Folium map to select a prediction location
-- 📌 **Location Presets** — Quick-select popular marine locations (Mumbai, Chennai, Kochi, Sydney, Cape Town…)
-- 🔍 **City Search** — Type any coastal city name to geocode and fetch data automatically
-- 📈 **Trend Charts** — Hourly Altair charts with tooltips for wave, wind, and swell
-- ⚠️ **Safety Guidance** — Contextual safety tips based on predicted condition and risk score
-- 📋 **Data Table + CSV Download** — View and export the last 12 hours of hourly data
-- 🧠 **Feature Importance Chart** — Visual breakdown of what drives the model's prediction
-- ⚙️ **Unit Toggle** — Switch between Metric (m, m/s) and Nautical (ft, knots)
-- 🎚️ **Smoothing** — Configurable moving-average smoothing on trend charts
-
-
-
-## 📦 Dependencies
-
-| Package | Purpose |
-|---|---|
-| `streamlit` | Interactive web dashboard |
-| `scikit-learn` | ML model (classifier) |
-| `joblib` | Model serialisation / loading |
-| `pandas` / `numpy` | Data manipulation |
-| `requests` | HTTP calls to weather APIs |
-| `altair` | Interactive trend charts |
-| `pydeck` | PyDeck map layer (fallback) |
-| `folium` + `streamlit-folium` | Interactive click-to-select map |
-| `python-dotenv` | Load `.env` API keys |
+If this repository is deployed on Streamlit Cloud you can open the live app there. Otherwise run locally (instructions below).
 
 ---
 
-## 🧠 How It Works
+##  Whats new in this branch
 
-```
-User picks a location (map / city / preset)
-           │
-           ▼
-   Fetch marine data
-   ┌──────────────────────────────────────────┐
-   │  Priority 1 → StormGlass (if key given)  │
-   │  Priority 2 → Open-Meteo (free, no key)  │
-   │  Priority 3 → Built-in sample data       │
-   └──────────────────────────────────────────┘
-           │
-           ▼
-   Feature Engineering
-   (wave height, wind speed, swell height, swell period)
-           │
-           ▼
-   Pre-trained Random Forest Classifier
-   (marine_model.pkl)
-           │
-           ▼
-   Output: Calm / Moderate / Rough + confidence %
-         + Risk Score + Safety Guidance + Charts
+This update adds a clean, polished UI with:
+- Sidebar presets and advanced controls (hours, live vs sample)
+- Interactive Altair charts with tooltips
+- Map (PyDeck / st.map) for selected coordinates
+- Cached model loading and better error handling
+- Clear KPIs, confidence display and tactical safety guidance
+- Downloadable CSV and a nicer color/theme
+
+---
+
+##  Quick start — Run locally (Windows PowerShell)
+
+1. Clone the repo and open the folder
+
+```powershell
+git clone https://github.com/Reshma100304/marineweatherforcasting.git
+cd MarineWeatherPredictor
 ```
 
+2. Create a virtual environment, activate and install dependencies
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+3. Start the app
+
+```powershell
+streamlit run app.py
+```
+
+4. Open http://localhost:8501 in a browser (Streamlit will also print the URL to the console).
+
 ---
 
-## 🌍 Supported Preset Locations
+##  Notes
 
-| Location | Lat | Lon |
-|---|---|---|
-| San Francisco, USA | 37.77 | -122.42 |
-| Sydney, Australia | -33.87 | 151.21 |
-| Cape Town, South Africa | -33.92 | 18.42 |
-| Mumbai, India | 19.08 | 72.88 |
-| Honolulu, Hawaii | 21.31 | -157.86 |
-| Visakhapatnam, India | 17.69 | 83.22 |
-| Chennai, India | 13.08 | 80.27 |
-| Kochi, India | 9.93 | 76.27 |
+- If you want real-time data, create a free StormGlass account and enter your key in the UI; otherwise the app uses sample data.
+- The ML model is saved (marine_model.pkl) — the app loads it at runtime. Scikit-learn version mismatches can cause warnings when unpickling.
 
+---
 
-## 🤝 Contributing
-
-Pull requests and issues are welcome! Please open an issue to discuss any major changes before submitting a PR.
-
+If you'd like, I can add screenshots and a short deployment guide for Streamlit Cloud next.

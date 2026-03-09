@@ -13,8 +13,14 @@ from dotenv import load_dotenv
 # Load .env file if it exists (silently ignored if missing)
 load_dotenv()
 
+import folium
+from streamlit_folium import st_folium
+
 from utils.model_loader import get_model
-from utils.data_fetcher import fetch_live_data, get_sample_data, engineer_features, FEATURE_COLS, geocode_city
+from utils.data_fetcher import (
+    fetch_openmeteo_data, fetch_stormglass_data,
+    get_sample_data, engineer_features, FEATURE_COLS, geocode_city,
+)
 from utils.charts import render_trend_chart, render_feature_importance
 
 # ---------------------------------------------------------------------------
@@ -52,12 +58,15 @@ PRESETS = {
     "Cape Town, ZA": (-33.9249, 18.4241),
     "Mumbai, IN": (19.0760, 72.8777),
     "Honolulu, US-HI": (21.3069, -157.8583),
+    "Visakhapatnam, IN": (17.6868, 83.2185),
+    "Chennai, IN": (13.0827, 80.2707),
+    "Kochi, IN": (9.9312, 76.2673),
 }
 
 with st.sidebar:
     st.header("⚙️ Controls")
 
-    # --- City Search ---
+    # ---------- Method 1: City search ----------
     st.markdown("###### 🔍 Search by city name")
     city_col, btn_col = st.columns([3, 1])
     with city_col:
@@ -69,51 +78,44 @@ with st.sidebar:
     with btn_col:
         search_clicked = st.button("Go", use_container_width=True)
 
-    # Geocode when user clicks Search
     if search_clicked and city_input.strip():
         with st.spinner(f"Looking up '{city_input}'..."):
             geo = geocode_city(city_input.strip())
         if geo:
-            st.session_state["geo_lat"] = geo[0]
-            st.session_state["geo_lng"] = geo[1]
-            st.session_state["geo_label"] = geo[2]
-            st.success(f"📍 Found: {geo[2][:60]}")
+            st.session_state["sel_lat"] = geo[0]
+            st.session_state["sel_lng"] = geo[1]
+            st.session_state["sel_label"] = geo[2]
+            st.success(f"📍 {geo[2][:55]}")
         else:
-            st.error(f"❌ Could not find '{city_input}'. Try a more specific name.")
+            st.error(f"❌ Could not find '{city_input}'.")
 
     st.markdown("---")
 
-    # --- Preset selector (fallback / convenience) ---
+    # ---------- Method 2: Preset ----------
     st.markdown("###### 📌 Or choose a preset")
-    PRESETS = {
-        "San Francisco, USA": (37.7749, -122.4194),
-        "Sydney, AU": (-33.8688, 151.2093),
-        "Cape Town, ZA": (-33.9249, 18.4241),
-        "Mumbai, IN": (19.0760, 72.8777),
-        "Honolulu, US-HI": (21.3069, -157.8583),
-        "Visakhapatnam, IN": (17.6868, 83.2185),
-    }
-    preset_name = st.selectbox("Location preset", ["(use city search above)"] + list(PRESETS.keys()))
-
-    # Resolve final lat/lng — city search wins over preset
-    if "geo_lat" in st.session_state and (search_clicked or preset_name == "(use city search above)"):
-        lat = st.session_state["geo_lat"]
-        lng = st.session_state["geo_lng"]
-    elif preset_name != "(use city search above)":
-        lat, lng = PRESETS[preset_name]
-        # Clear geocode state when user switches to a preset
-        st.session_state.pop("geo_lat", None)
-        st.session_state.pop("geo_lng", None)
-    else:
-        lat = st.session_state.get("geo_lat", 37.7749)
-        lng = st.session_state.get("geo_lng", -122.4194)
-
-    lat = st.number_input("Latitude", value=float(lat), format="%f")
-    lng = st.number_input("Longitude", value=float(lng), format="%f")
+    preset_name = st.selectbox(
+        "Location preset",
+        ["— (using map / search)"] + list(PRESETS.keys()),
+    )
+    if preset_name != "— (using map / search)":
+        st.session_state["sel_lat"] = PRESETS[preset_name][0]
+        st.session_state["sel_lng"] = PRESETS[preset_name][1]
+        st.session_state["sel_label"] = preset_name
 
     st.markdown("---")
 
-    # Pre-fill from STORMGLASS_API_KEY in .env (empty string if not set)
+    # ---------- Resolved lat/lng (editable) ----------
+    _lat = float(st.session_state.get("sel_lat", 20.0))
+    _lng = float(st.session_state.get("sel_lng", 80.0))
+    lat = st.number_input("Latitude", value=_lat, format="%.4f")
+    lng = st.number_input("Longitude", value=_lng, format="%.4f")
+    # Sync manual edits back to session state
+    st.session_state["sel_lat"] = lat
+    st.session_state["sel_lng"] = lng
+
+    st.markdown("---")
+
+    # ---------- API key ----------
     _env_key = os.getenv("STORMGLASS_API_KEY", "")
     api_key = st.text_input(
         "StormGlass API Key (optional)",
@@ -132,6 +134,49 @@ with st.sidebar:
     st.caption("Built with Streamlit + scikit-learn. Model loaded from `marine_model.pkl`.")
 
 # ---------------------------------------------------------------------------
+# Method 3: Interactive map location picker (main area)
+# ---------------------------------------------------------------------------
+with st.expander("🗺️ Click on the map to pick a location", expanded=False):
+    st.caption(
+        "Click anywhere on the ocean to set the prediction location. "
+        "The blue marker shows your currently active coordinates."
+    )
+
+    _map_lat = float(st.session_state.get("sel_lat", 20.0))
+    _map_lng = float(st.session_state.get("sel_lng", 80.0))
+
+    # Build a dark-tiled world map with a marker at the current selection
+    m = folium.Map(
+        location=[_map_lat, _map_lng],
+        zoom_start=4,
+        tiles="CartoDB dark_matter",
+    )
+    folium.Marker(
+        location=[_map_lat, _map_lng],
+        tooltip=f"Selected: {_map_lat:.4f}, {_map_lng:.4f}",
+        icon=folium.Icon(color="blue", icon="map-marker"),
+    ).add_to(m)
+
+    # Render map and capture click events
+    map_data = st_folium(m, width="100%", height=380, returned_objects=["last_clicked"])
+
+    if map_data and map_data.get("last_clicked"):
+        clicked = map_data["last_clicked"]
+        new_lat = round(clicked["lat"], 4)
+        new_lng = round(clicked["lng"], 4)
+        # Only update if the click resulted in a different location
+        if (new_lat != st.session_state.get("sel_lat") or
+                new_lng != st.session_state.get("sel_lng")):
+            st.session_state["sel_lat"] = new_lat
+            st.session_state["sel_lng"] = new_lng
+            st.session_state["sel_label"] = f"Map pick ({new_lat}, {new_lng})"
+            st.rerun()
+
+    active_label = st.session_state.get("sel_label", "—")
+    st.info(f"📍 **Active location:** {active_label} — lat={lat:.4f}, lng={lng:.4f}")
+
+
+# ---------------------------------------------------------------------------
 # Load model
 # ---------------------------------------------------------------------------
 model = get_model()
@@ -140,30 +185,43 @@ model = get_model()
 # Predict button
 # ---------------------------------------------------------------------------
 if st.button("🔮 Predict marine condition", key="predict_button"):
-    # 1. Fetch data
+    # 1. Fetch data — priority: StormGlass (if key given) > Open-Meteo (free) > sample
     df = None
-    using_live_data = False
+    data_source = None
 
-    if use_live and api_key:
-        df = fetch_live_data(lat, lng, api_key, hours)
+    # Priority 1: StormGlass (paid, user-supplied key)
+    if api_key and use_live:
+        df = fetch_stormglass_data(lat, lng, api_key, hours)
         if df is not None and not df.empty:
-            using_live_data = True
+            data_source = "stormglass"
 
+    # Priority 2: Open-Meteo — free, no key, real location data
+    if df is None or df.empty:
+        df = fetch_openmeteo_data(lat, lng, hours)
+        if df is not None and not df.empty:
+            data_source = "openmeteo"
+
+    # Priority 3: Hardcoded sample (true last resort — inland or API down)
     if df is None or df.empty:
         df = get_sample_data()
-        using_live_data = False
+        data_source = "sample"
 
-    # --- Always show data source banner so user knows what drove the prediction ---
-    if using_live_data:
+    # --- Data source banner ---
+    if data_source == "stormglass":
         st.success(
-            f"✅ **Using live StormGlass data** for lat={lat:.4f}, lng={lng:.4f} — "
-            f"prediction reflects **real current conditions**."
+            f"✅ **StormGlass live data** — lat={lat:.4f}, lng={lng:.4f} "
+            f"({len(df)} hours of real conditions)"
+        )
+    elif data_source == "openmeteo":
+        st.success(
+            f"✅ **Real marine forecast** (Open-Meteo, free) — lat={lat:.4f}, lng={lng:.4f} "
+            f"| {len(df)} hours · no API key needed"
         )
     else:
         st.warning(
-            f"⚠️ **Using hardcoded sample data** (Wave 1.2 m, Wind 6.5 m/s) — "
-            f"**NOT real data for lat={lat:.4f}, lng={lng:.4f}.** "
-            f"To get real predictions: provide a StormGlass API key and enable ‘Fetch live data’."
+            f"⚠️ **Fallback to sample data** — Open-Meteo returned no marine data for "
+            f"lat={lat:.4f}, lng={lng:.4f} (location may be inland or over land). "
+            f"Results reflect generic conditions, NOT your location."
         )
 
     # 2. Feature engineering
