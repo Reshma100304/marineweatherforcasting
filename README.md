@@ -1,4 +1,4 @@
-﻿#  Marine Weather Predictor Dashboard
+#  Marine Weather Predictor Dashboard
 
 An AI-powered Marine Weather Prediction System that predicts real-time marine conditions — Calm, Moderate, or Rough — based on ocean parameters (wave height, wind speed, swell height/period).
 
